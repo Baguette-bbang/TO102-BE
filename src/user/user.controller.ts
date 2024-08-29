@@ -8,15 +8,15 @@ import {
   Logger,
   forwardRef,
   Inject,
-  Headers,
   UnauthorizedException,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiHeader,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import {
   UserRatingResponseDto,
@@ -38,6 +38,7 @@ export class UserController {
   ) {}
 
   @Get('me')
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: '현재 로그인한 사용자 정보 조회',
     description:
@@ -52,14 +53,9 @@ export class UserController {
     status: HttpStatus.UNAUTHORIZED,
     description: '유효하지 않은 토큰',
   })
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'Bearer <token>',
-    required: true,
-  })
-  async getCurrentUser(
-    @Headers('authorization') authHeader: string,
-  ): Promise<UserResponseDto> {
+  async getCurrentUser(@Req() req: Request): Promise<UserResponseDto> {
+    const authHeader = req.headers['authorization'];
+
     if (!authHeader) {
       throw new UnauthorizedException(
         'Authorization 헤더가 존재하지 않습니다.',
