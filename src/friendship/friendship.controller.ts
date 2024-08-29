@@ -147,4 +147,17 @@ export class FriendshipController {
       limit,
     );
   }
+
+  @Delete('unblock')
+  @ApiOperation({
+    summary: '사용자 차단 해제',
+    description: '차단한 사용자를 차단 해제합니다.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '사용자 차단이 해제되었습니다.',
+  })
+  unblockUser(@Body() blockUserDto: BlockUserDto): Promise<void> {
+    return this.friendshipService.unblockUser(blockUserDto);
+  }
 }

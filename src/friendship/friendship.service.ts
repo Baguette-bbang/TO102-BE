@@ -232,4 +232,18 @@ export class FriendshipService {
       createdAt: request.createdAt,
     }));
   }
+
+  async unblockUser(blockUserDto: BlockUserDto): Promise<void> {
+    const { blockerId, blockedId } = blockUserDto;
+
+    const existingBlock = await this.userBlockRepository.findOne({
+      where: { blockerId, blockedId },
+    });
+
+    if (!existingBlock) {
+      throw new NotFoundException('차단된 사용자를 찾을 수 없습니다.');
+    }
+
+    await this.userBlockRepository.remove(existingBlock);
+  }
 }
