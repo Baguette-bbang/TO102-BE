@@ -10,7 +10,12 @@ import { Friendship } from '../entities/friendship.entity';
 import { FriendRequest } from '../entities/friend-request.entity';
 import { UserBlock } from '../entities/user-block.entity';
 import { User } from '../entities/user.entity';
-import { CreateFriendRequestDto, BlockUserDto } from './dto/friendship.dto';
+import {
+  CreateFriendRequestDto,
+  BlockUserDto,
+  ResponseFriendRequestDto,
+  ResponseFriendshipDto,
+} from './dto/friendship.dto';
 
 @Injectable()
 export class FriendshipService {
@@ -25,25 +30,31 @@ export class FriendshipService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  // 친구 요청 보내기
-  async sendFriendRequest(
-    createFriendRequestDto: CreateFriendRequestDto,
+  private async checkBlockRelationship(
+    userId1: number,
+    userId2: number,
   ): Promise<void> {
-    const { requesterId, addresseeId } = createFriendRequestDto;
-
-    // 차단 관계 확인
     const isBlocked = await this.userBlockRepository.findOne({
       where: [
-        { blockerId: requesterId, blockedId: addresseeId },
-        { blockerId: addresseeId, blockedId: requesterId },
+        { blockerId: userId1, blockedId: userId2 },
+        { blockerId: userId2, blockedId: userId1 },
       ],
     });
 
     if (isBlocked) {
       throw new BadRequestException(
-        '차단 관계에서는 친구 요청을 보낼 수 없습니다.',
+        '차단 관계에서는 이 작업을 수행할 수 없습니다.',
       );
     }
+  }
+
+  // 친구 요청 보내기
+  async sendFriendRequest(
+    createFriendRequestDto: CreateFriendRequestDto,
+  ): Promise<ResponseFriendRequestDto> {
+    const { requesterId, addresseeId } = createFriendRequestDto;
+
+    await this.checkBlockRelationship(requesterId, addresseeId);
 
     // 이미 친구 요청이 있는지 확인
     const existingRequest = await this.friendRequestRepository.findOne({
@@ -75,53 +86,57 @@ export class FriendshipService {
       addresseeId,
     });
     await this.friendRequestRepository.save(friendRequest);
+
+    return { requestId: friendRequest.requestId };
   }
 
   // 친구 요청 수락
-  async acceptFriendRequest(
-    requesterId: number,
-    addresseeId: number,
-  ): Promise<void> {
+  async acceptFriendRequest(requestId: number): Promise<ResponseFriendshipDto> {
     const friendRequest = await this.friendRequestRepository.findOne({
-      where: { requesterId, addresseeId },
+      where: { requestId },
     });
 
     if (!friendRequest) {
       throw new NotFoundException('친구 요청을 찾을 수 없습니다.');
     }
+
+    await this.checkBlockRelationship(
+      friendRequest.requesterId,
+      friendRequest.addresseeId,
+    );
 
     await this.friendRequestRepository.remove(friendRequest);
 
     const friendship = this.friendshipRepository.create({
-      userId1: requesterId,
-      userId2: addresseeId,
+      userId1: friendRequest.requesterId,
+      userId2: friendRequest.addresseeId,
     });
     await this.friendshipRepository.save(friendship);
+    return { friendshipId: friendship.friendshipId };
   }
 
   // 친구 요청 거절 또는 요청 취소
-  async declineFriendRequest(
-    requesterId: number,
-    addresseeId: number,
-  ): Promise<void> {
+  async declineFriendRequest(requestId: number): Promise<void> {
     const friendRequest = await this.friendRequestRepository.findOne({
-      where: { requesterId, addresseeId },
+      where: { requestId },
     });
 
     if (!friendRequest) {
       throw new NotFoundException('친구 요청을 찾을 수 없습니다.');
     }
+
+    await this.checkBlockRelationship(
+      friendRequest.requesterId,
+      friendRequest.addresseeId,
+    );
 
     await this.friendRequestRepository.remove(friendRequest);
   }
 
   // 친구 관계 삭제
-  async deleteFriendship(userId1: number, userId2: number): Promise<void> {
+  async deleteFriendship(friendshipId: number): Promise<void> {
     const friendship = await this.friendshipRepository.findOne({
-      where: [
-        { userId1, userId2 },
-        { userId1: userId2, userId2: userId1 },
-      ],
+      where: { friendshipId },
     });
 
     if (!friendship) {
@@ -134,6 +149,18 @@ export class FriendshipService {
   // 사용자 차단
   async blockUser(blockUserDto: BlockUserDto): Promise<void> {
     const { blockerId, blockedId } = blockUserDto;
+
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { userId1: blockerId, userId2: blockedId },
+        { userId1: blockedId, userId2: blockerId },
+      ],
+    });
+
+    if (friendship) {
+      // 차단 시 친구관계도 삭제됨.
+      this.deleteFriendship(friendship.friendshipId);
+    }
 
     const existingBlock = await this.userBlockRepository.findOne({
       where: { blockerId, blockedId },
@@ -148,5 +175,61 @@ export class FriendshipService {
       blockedId,
     });
     await this.userBlockRepository.save(userBlock);
+  }
+
+  async getSentFriendRequests(
+    userId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<ResponseFriendRequestDto[]> {
+    const skip = (page - 1) * limit;
+
+    const requests = await this.friendRequestRepository.find({
+      where: { requesterId: userId },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+      relations: ['addressee'], // 수신자 정보를 함께 가져옵니다.
+    });
+
+    if (!requests.length) {
+      throw new NotFoundException('보낸 친구 요청을 찾을 수 없습니다.');
+    }
+
+    return requests.map((request) => ({
+      requestId: request.requestId,
+      requesterId: request.requesterId,
+      addresseeId: request.addresseeId,
+      addresseeName: request.addressee, // 수신자 이름
+      createdAt: request.createdAt,
+    }));
+  }
+
+  async getReceivedFriendRequests(
+    userId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<ResponseFriendRequestDto[]> {
+    const skip = (page - 1) * limit;
+
+    const requests = await this.friendRequestRepository.find({
+      where: { addresseeId: userId },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+      relations: ['requester'], // 발신자 정보를 함께 가져옵니다.
+    });
+
+    if (!requests.length) {
+      throw new NotFoundException('받은 친구 요청을 찾을 수 없습니다.');
+    }
+
+    return requests.map((request) => ({
+      requestId: request.requestId,
+      requesterId: request.requesterId,
+      addresseeId: request.addresseeId,
+      requesterName: request.requester, // 발신자 이름
+      createdAt: request.createdAt,
+    }));
   }
 }
