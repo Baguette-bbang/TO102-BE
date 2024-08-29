@@ -11,6 +11,8 @@ import {
 import { User } from './user.entity';
 import { Location } from './location.entity';
 import { PostTag } from './post-tag.entity';
+import { PostParticipationRequest } from './post-participant-request.entity';
+import { PostParticipant } from './post-participant.entity';
 
 @Entity('post')
 export class Post {
@@ -58,4 +60,10 @@ export class Post {
 
   @OneToMany(() => PostTag, (postTag) => postTag.post)
   postTags: PostTag[];
+
+  @OneToMany(() => PostParticipationRequest, (request) => request.post)
+  participationRequests: PostParticipationRequest[];
+
+  @OneToMany(() => PostParticipant, (participant) => participant.post)
+  participants: PostParticipant[];
 }

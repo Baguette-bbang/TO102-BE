@@ -14,6 +14,8 @@ import { UserLocation } from './entities/user-location.entity';
 import { UserOauth } from './entities/user-oauth.entity';
 import { UserRating } from './entities/user-rating.entity';
 import { User } from './entities/user.entity';
+import { PostParticipant } from './entities/post-participant.entity';
+import { PostParticipationRequest } from './entities/post-participant-request.entity';
 
 config();
 const configService = new ConfigService();
@@ -38,6 +40,8 @@ export const dataSourceOptions: DataSourceOptions = {
     UserOauth,
     UserRating,
     User,
+    PostParticipant,
+    PostParticipationRequest,
   ],
   //migrations: ['src/migrations/*.ts'],
   logging: process.env.NODE_ENV === 'development',
@@ -46,6 +50,7 @@ export const dataSourceOptions: DataSourceOptions = {
       ? { rejectUnauthorized: false }
       : false,
   logger: 'advanced-console',
+  //synchronize: true,
 };
 
 const dataSource = new DataSource(dataSourceOptions);

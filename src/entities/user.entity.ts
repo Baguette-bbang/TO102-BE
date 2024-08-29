@@ -15,6 +15,8 @@ import { Review } from './review.entity';
 import { FriendRequest } from './friend-request.entity';
 import { Friendship } from './friendship.entity';
 import { Post } from './post.entity';
+import { PostParticipationRequest } from './post-participant-request.entity';
+import { PostParticipant } from './post-participant.entity';
 
 @Entity('user')
 export class User {
@@ -81,4 +83,13 @@ export class User {
 
   @OneToMany(() => Post, (post) => post.user)
   posts: Post[];
+
+  @OneToMany(() => PostParticipationRequest, (request) => request.requester)
+  sentParticipationRequests: PostParticipationRequest[];
+
+  @OneToMany(() => PostParticipationRequest, (request) => request.addressee)
+  receivedParticipationRequests: PostParticipationRequest[];
+
+  @OneToMany(() => PostParticipant, (participant) => participant.user)
+  participations: PostParticipant[];
 }
