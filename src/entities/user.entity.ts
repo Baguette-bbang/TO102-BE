@@ -15,7 +15,7 @@ import { Review } from './review.entity';
 import { FriendRequest } from './friend-request.entity';
 import { Friendship } from './friendship.entity';
 import { Post } from './post.entity';
-import { PostParticipationRequest } from './post-participant-request.entity';
+import { PostParticipationRequest } from './post-participation-request.entity';
 import { PostParticipant } from './post-participant.entity';
 
 @Entity('user')

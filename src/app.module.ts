@@ -11,6 +11,7 @@ import { TagModule } from './tag/tag.module';
 import { FriendshipModule } from './friendship/friendship.module';
 import { PostModule } from './post/post.module';
 import { ReviewModule } from './review/review.module';
+import { ParticipantModule } from './participant/participant.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ReviewModule } from './review/review.module';
     FriendshipModule,
     PostModule,
     ReviewModule,
+    ParticipantModule,
   ],
   controllers: [AppController],
   providers: [AppService],
