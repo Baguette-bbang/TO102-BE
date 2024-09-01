@@ -45,32 +45,26 @@ export class TagController {
     return this.tagService.getAllTags();
   }
 
-  @Get(':name')
+  @Get(':nameOrId')
   @ApiOperation({
     summary: '태그 조회',
-    description: '대크 이름으로 태그를 조회합니다.',
+    description: '이름이나 ID로 태그를 조회합니다.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: '태그 조회 성공',
     type: TagResponseDto,
   })
-  getTagByName(@Param('name') tagName: string): Promise<TagResponseDto> {
-    return this.tagService.getTagByName(tagName);
-  }
-
-  @Get(':id')
-  @ApiOperation({
-    summary: '태그 조회',
-    description: 'ID로 태그를 조회합니다.',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: '태그 조회 성공',
-    type: TagResponseDto,
-  })
-  getTagById(@Param('id') tagId: number): Promise<TagResponseDto> {
-    return this.tagService.getTagById(tagId);
+  async getTagByNameOrId(
+    @Param('nameOrId') nameOrId: string,
+  ): Promise<TagResponseDto> {
+    if (!isNaN(Number(nameOrId))) {
+      // 숫자라면 ID로 간주
+      return this.tagService.getTagById(Number(nameOrId));
+    } else {
+      // 그렇지 않다면 이름으로 간주
+      return this.tagService.getTagByName(nameOrId);
+    }
   }
 
   @Put(':id')
