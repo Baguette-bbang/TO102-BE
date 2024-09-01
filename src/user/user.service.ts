@@ -36,21 +36,30 @@ export class UserService {
     private readonly userRatingRepository: Repository<UserRating>,
   ) {}
 
-  async getUserById(id: number): Promise<User> {
+  async getUserById(id: number): Promise<any> {
     this.logger.log(`사용자 정보 조회 요청. ID: ${id}`);
     if (!id || isNaN(id)) {
       throw new NotFoundException(`Invalid user ID: ${id}`);
     }
+
     const user = await this.userRepository.findOne({
       where: { userId: id },
-      relations: ['oauths'],
+      relations: ['oauths', 'userLocations'],
     });
+
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    return user;
-  }
+    const locationId = user.userLocations[0]?.locationId;
 
+    const transformedUser = {
+      ...user,
+      locationId: locationId,
+    };
+    delete transformedUser.userLocations;
+
+    return transformedUser;
+  }
   async updateUsername(
     id: number,
     usernameUpdateDto: UsernameUpdateDto,
