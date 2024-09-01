@@ -45,6 +45,20 @@ export class TagController {
     return this.tagService.getAllTags();
   }
 
+  @Get(':name')
+  @ApiOperation({
+    summary: '태그 조회',
+    description: '대크 이름으로 태그를 조회합니다.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '태그 조회 성공',
+    type: TagResponseDto,
+  })
+  getTagByName(@Param('name') tagName: string): Promise<TagResponseDto> {
+    return this.tagService.getTagByName(tagName);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: '태그 조회',
