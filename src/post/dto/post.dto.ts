@@ -1,132 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
+import { Post } from '../../entities/post.entity';
 
-export class CreatePostDto {
-  @ApiProperty({ description: '게시글 제목', example: 'NestJS 게시글 예제' })
-  title: string;
-
+export class CreatePostDto extends PickType(Post, [
+  'title',
+  'content',
+  'thumbnail',
+  'userId',
+  'locationId',
+  'meetingDate',
+] as const) {
   @ApiProperty({
-    description: '게시글 내용',
-    example: '이것은 예제 게시글입니다.',
-  })
-  content: string;
-
-  @ApiProperty({
-    description: '썸네일 URL',
-    example: 'https://example.com/thumbnail.jpg',
+    description: '태그 ID 목록',
+    example: [1, 2, 3],
     required: false,
   })
-  thumbnail?: string;
-
-  @ApiProperty({ description: '사용자 ID', example: 1 })
-  userId: number;
-
-  @ApiProperty({ description: '위치 ID', example: 1 })
-  locationId: number;
-
-  @ApiProperty({
-    description: '모임 날짜',
-    example: '2024-09-01T14:00:00.000Z',
-  })
-  meetingDate: Date;
-
-  @ApiProperty({
-    description: '태그 목록',
-    example: ['NestJS', 'TypeScript'],
-    required: false,
-  })
-  tags?: string[];
+  tagIds?: number[];
 }
 
-export class UpdatePostDto {
+export class UpdatePostDto extends PartialType(
+  PickType(Post, [
+    'title',
+    'content',
+    'thumbnail',
+    'locationId',
+    'meetingDate',
+  ] as const),
+) {
   @ApiProperty({
-    description: '게시글 제목',
-    example: 'NestJS 게시글 예제',
+    description: '태그 ID 목록',
+    example: [1, 2, 3],
     required: false,
   })
-  title?: string;
-
-  @ApiProperty({
-    description: '게시글 내용',
-    example: '이것은 예제 게시글입니다.',
-    required: false,
-  })
-  content?: string;
-
-  @ApiProperty({
-    description: '썸네일 URL',
-    example: 'https://example.com/thumbnail.jpg',
-    required: false,
-  })
-  thumbnail?: string;
-
-  @ApiProperty({ description: '위치 ID', example: 1, required: false })
-  locationId?: number;
-
-  @ApiProperty({
-    description: '모임 날짜',
-    example: '2024-09-01T14:00:00.000Z',
-    required: false,
-  })
-  meetingDate?: Date;
-
-  @ApiProperty({
-    description: '태그 목록',
-    example: ['NestJS', 'TypeScript'],
-    required: false,
-  })
-  tags?: string[];
+  tagIds?: number[];
 }
 
-export class PostResponseDto {
-  @ApiProperty({ description: '게시글 ID', example: 1 })
-  postId: number;
-
-  @ApiProperty({ description: '게시글 제목', example: 'NestJS 게시글 예제' })
-  title: string;
-
+export class PostResponseDto extends PickType(Post, [
+  'postId',
+  'title',
+  'content',
+  'thumbnail',
+  'userId',
+  'locationId',
+  'meetingDate',
+  'createdAt',
+  'updatedAt',
+  'status',
+] as const) {
   @ApiProperty({
-    description: '게시글 내용',
-    example: '이것은 예제 게시글입니다.',
-  })
-  content: string;
-
-  @ApiProperty({
-    description: '썸네일 URL',
-    example: 'https://example.com/thumbnail.jpg',
-  })
-  thumbnail?: string;
-
-  @ApiProperty({ description: '사용자 ID', example: 1 })
-  userId: number;
-
-  @ApiProperty({ description: '위치 ID', example: 1 })
-  locationId: number;
-
-  @ApiProperty({
-    description: '모임 날짜',
-    example: '2024-09-01T14:00:00.000Z',
-  })
-  meetingDate: Date;
-
-  @ApiProperty({
-    description: '생성 날짜',
-    example: '2024-08-28T14:00:00.000Z',
-  })
-  createdAt: Date;
-
-  @ApiProperty({
-    description: '수정 날짜',
-    example: '2024-08-29T14:00:00.000Z',
-  })
-  updatedAt: Date;
-
-  @ApiProperty({ description: '게시글 상태', example: 'active' })
-  status: string;
-
-  @ApiProperty({
-    description: '태그 목록',
-    example: ['NestJS', 'TypeScript'],
+    description: '태그 정보 목록',
+    example: [
+      { id: 1, name: 'NestJS' },
+      { id: 2, name: 'TypeScript' },
+    ],
     required: false,
   })
-  tags: string[];
+  tags: { id: number; name: string }[];
 }

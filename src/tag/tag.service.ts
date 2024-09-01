@@ -44,4 +44,12 @@ export class TagService {
       throw new NotFoundException(`ID가 ${tagId}인 태그를 찾을 수 없습니다.`);
     }
   }
+
+  async getTagByName(tagName: string): Promise<TagResponseDto> {
+    const tag = await this.tagRepository.findOne({ where: { name: tagName } });
+    if (!tag) {
+      throw new NotFoundException(`ID가 ${tagName}인 태그를 찾을 수 없습니다.`);
+    }
+    return tag;
+  }
 }

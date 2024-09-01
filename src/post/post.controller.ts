@@ -8,7 +8,7 @@ import {
   Body,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PostService } from './post.service';
 import { CreatePostDto, UpdatePostDto, PostResponseDto } from './dto/post.dto';
 
@@ -59,10 +59,15 @@ export class PostController {
     return this.postService.getPostById(postId);
   }
 
-  @Put(':id')
+  @Put(':postId')
   @ApiOperation({
     summary: '게시글 수정',
-    description: 'ID로 특정 게시글을 수정합니다.',
+    description: '특정 ID의 게시글을 수정합니다.',
+  })
+  @ApiParam({
+    name: 'postId',
+    description: '수정할 게시글의 ID',
+    type: 'number',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -70,7 +75,7 @@ export class PostController {
     type: PostResponseDto,
   })
   updatePost(
-    @Param('id') postId: number,
+    @Param('postId') postId: number,
     @Body() updatePostDto: UpdatePostDto,
   ): Promise<PostResponseDto> {
     return this.postService.updatePost(postId, updatePostDto);
@@ -89,18 +94,23 @@ export class PostController {
     return this.postService.deletePost(postId);
   }
 
-  @Get('tag/:tagName')
+  @Get('tag/:tagId')
   @ApiOperation({
     summary: '특정 태그로 게시글 조회',
-    description: '특정 태그에 해당하는 게시글을 조회합니다.',
+    description: '특정 태그 ID에 해당하는 게시글을 조회합니다.',
+  })
+  @ApiParam({
+    name: 'tagId',
+    description: '조회할 태그의 ID',
+    type: 'number',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: '태그로 필터링된 게시글 조회 성공',
     type: [PostResponseDto],
   })
-  getPostsByTag(@Param('tagName') tagName: string): Promise<PostResponseDto[]> {
-    return this.postService.getPostsByTag(tagName);
+  getPostsByTag(@Param('tagId') tagId: number): Promise<PostResponseDto[]> {
+    return this.postService.getPostsByTag(tagId);
   }
 
   @Get('location/:locationId')

@@ -77,7 +77,7 @@ export class LocationController {
   @ApiParam({
     name: 'province',
     description: '광역시/특별시/도',
-    example: '서울특별시',
+    example: '서울',
   })
   @ApiResponse({
     status: 200,

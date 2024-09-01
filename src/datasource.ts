@@ -15,7 +15,7 @@ import { UserOauth } from './entities/user-oauth.entity';
 import { UserRating } from './entities/user-rating.entity';
 import { User } from './entities/user.entity';
 import { PostParticipant } from './entities/post-participant.entity';
-import { PostParticipationRequest } from './entities/post-participant-request.entity';
+import { PostParticipationRequest } from './entities/post-participation-request.entity';
 
 config();
 const configService = new ConfigService();

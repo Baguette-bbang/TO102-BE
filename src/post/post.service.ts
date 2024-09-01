@@ -16,11 +16,36 @@ export class PostService {
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
   ) {}
-
+  private mapPostToResponseDto(post: Post): PostResponseDto {
+    return {
+      postId: post.postId,
+      title: post.title,
+      content: post.content,
+      thumbnail: post.thumbnail,
+      userId: post.userId,
+      locationId: post.locationId,
+      meetingDate: post.meetingDate,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      status: post.status,
+      tags:
+        post.postTags?.map((postTag) => ({
+          id: postTag.tag.tagId,
+          name: postTag.tag.name,
+        })) || [],
+    };
+  }
   // 게시글 생성
   async createPost(createPostDto: CreatePostDto): Promise<PostResponseDto> {
-    const { title, content, thumbnail, userId, locationId, tags, meetingDate } =
-      createPostDto;
+    const {
+      title,
+      content,
+      thumbnail,
+      userId,
+      locationId,
+      tagIds,
+      meetingDate,
+    } = createPostDto;
 
     const post = this.postRepository.create({
       title,
@@ -29,38 +54,34 @@ export class PostService {
       userId,
       locationId,
       meetingDate,
-      status: 'active', // 기본 상태값을 'active'로 설정
+      status: 'active',
     });
 
     const savedPost = await this.postRepository.save(post);
 
     // 태그 추가
-    if (tags && tags.length > 0) {
-      for (const tagName of tags) {
-        let tag = await this.tagRepository.findOne({
-          where: { name: tagName },
-        });
-        if (!tag) {
-          tag = this.tagRepository.create({ name: tagName });
-          await this.tagRepository.save(tag);
+    if (tagIds && tagIds.length > 0) {
+      for (const tagId of tagIds) {
+        const tag = await this.tagRepository.findOne({ where: { tagId } });
+        if (tag) {
+          const postTag = this.postTagRepository.create({
+            post: savedPost,
+            tag: tag,
+          });
+          await this.postTagRepository.save(postTag);
         }
-
-        const postTag = this.postTagRepository.create({
-          postId: savedPost.postId,
-          tagId: tag.tagId,
-        });
-
-        await this.postTagRepository.save(postTag);
       }
     }
 
-    return this.mapPostToResponseDto(savedPost);
+    // 저장 후 다시 로드하여 관계를 포함한 상태로 반환
+    const postWithTags = await this.getPostEntityById(savedPost.postId);
+    return this.mapPostToResponseDto(postWithTags);
   }
 
   // 모든 게시글 조회
   async getAllPosts(): Promise<PostResponseDto[]> {
     const posts = await this.postRepository.find({
-      relations: ['user', 'location', 'postTags', 'postTags.tag'],
+      relations: ['postTags', 'postTags.tag'],
     });
     return posts.map((post) => this.mapPostToResponseDto(post));
   }
@@ -75,7 +96,7 @@ export class PostService {
   private async getPostEntityById(postId: number): Promise<Post> {
     const post = await this.postRepository.findOne({
       where: { postId },
-      relations: ['user', 'location', 'postTags', 'postTags.tag'],
+      relations: ['postTags', 'postTags.tag'],
     });
 
     if (!post) {
@@ -98,28 +119,24 @@ export class PostService {
     const updatedPost = await this.postRepository.save(post);
 
     // 태그 업데이트
-    if (updatePostDto.tags && updatePostDto.tags.length > 0) {
+    if (updatePostDto.tagIds) {
       await this.postTagRepository.delete({ postId: post.postId });
 
-      for (const tagName of updatePostDto.tags) {
-        let tag = await this.tagRepository.findOne({
-          where: { name: tagName },
-        });
-        if (!tag) {
-          tag = this.tagRepository.create({ name: tagName });
-          await this.tagRepository.save(tag);
+      for (const tagId of updatePostDto.tagIds) {
+        const tag = await this.tagRepository.findOne({ where: { tagId } });
+        if (tag) {
+          const postTag = this.postTagRepository.create({
+            post: updatedPost,
+            tag: tag,
+          });
+          await this.postTagRepository.save(postTag);
         }
-
-        const postTag = this.postTagRepository.create({
-          postId: updatedPost.postId,
-          tagId: tag.tagId,
-        });
-
-        await this.postTagRepository.save(postTag);
       }
     }
 
-    return this.mapPostToResponseDto(updatedPost);
+    // 수정 후 다시 로드하여 관계를 포함한 상태로 반환
+    const postWithTags = await this.getPostEntityById(updatedPost.postId);
+    return this.mapPostToResponseDto(postWithTags);
   }
 
   // 게시글 삭제
@@ -129,20 +146,14 @@ export class PostService {
     await this.postTagRepository.delete({ postId: post.postId });
     await this.postRepository.remove(post);
   }
-  async getPostsByTag(tagName: string): Promise<PostResponseDto[]> {
-    const tag = await this.tagRepository.findOne({ where: { name: tagName } });
 
-    if (!tag) {
-      throw new NotFoundException(`태그 "${tagName}"를 찾을 수 없습니다.`);
-    }
-
+  // 태그로 게시글 조회
+  async getPostsByTag(tagId: number): Promise<PostResponseDto[]> {
     const posts = await this.postRepository
       .createQueryBuilder('post')
       .innerJoin('post.postTags', 'postTag')
       .innerJoin('postTag.tag', 'tag')
-      .where('tag.name = :tagName', { tagName })
-      .leftJoinAndSelect('post.user', 'user')
-      .leftJoinAndSelect('post.location', 'location')
+      .where('tag.tagId = :tagId', { tagId })
       .leftJoinAndSelect('post.postTags', 'postTags')
       .leftJoinAndSelect('postTags.tag', 'tags')
       .getMany();
@@ -152,42 +163,26 @@ export class PostService {
 
   // 특정 지역으로 게시글 조회
   async getPostsByLocation(locationId: number): Promise<PostResponseDto[]> {
-    const location = await this.postRepository.find({
+    const posts = await this.postRepository.find({
       where: { locationId },
-      relations: ['user', 'location', 'postTags', 'postTags.tag'],
+      relations: ['postTags', 'postTags.tag'],
     });
 
-    if (!location || location.length === 0) {
+    if (!posts || posts.length === 0) {
       throw new NotFoundException(
         `ID가 ${locationId}인 지역에 해당하는 게시글을 찾을 수 없습니다.`,
       );
     }
 
-    return location.map((post) => this.mapPostToResponseDto(post));
+    return posts.map((post) => this.mapPostToResponseDto(post));
   }
 
-  // 게시글 응답 DTO로 매핑
-  private mapPostToResponseDto(post: Post): PostResponseDto {
-    return {
-      postId: post.postId,
-      title: post.title,
-      content: post.content,
-      thumbnail: post.thumbnail,
-      userId: post.userId,
-      locationId: post.locationId,
-      meetingDate: post.meetingDate,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      status: post.status,
-      tags: post.postTags ? post.postTags.map((pt) => pt.tag.name) : [],
-    };
-  }
-
+  // 최신 게시글 10개 조회
   async getLatestPosts(): Promise<PostResponseDto[]> {
     const posts = await this.postRepository.find({
       order: { createdAt: 'DESC' },
       take: 10,
-      relations: ['user', 'location', 'postTags', 'postTags.tag'],
+      relations: ['postTags', 'postTags.tag'],
     });
 
     return posts.map((post) => this.mapPostToResponseDto(post));
