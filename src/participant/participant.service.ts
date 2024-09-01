@@ -1,13 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PostParticipationRequest } from '../entities/post-participation-request.entity';
 import { PostParticipant } from '../entities/post-participant.entity';
+import { Post } from '../entities/post.entity';
 import {
   CreateParticipationRequestDto,
   ParticipationRequestResponseDto,
   ParticipantResponseDto,
 } from './dto/participant.dto';
+import { UserBlock } from 'src/entities/user-block.entity';
+
 @Injectable()
 export class ParticipantService {
   constructor(
@@ -15,12 +22,48 @@ export class ParticipantService {
     private participationRequestRepository: Repository<PostParticipationRequest>,
     @InjectRepository(PostParticipant)
     private participantRepository: Repository<PostParticipant>,
+    @InjectRepository(Post)
+    private postRepository: Repository<Post>,
+    @InjectRepository(UserBlock)
+    private userBlockRepository: Repository<UserBlock>,
   ) {}
 
   async createParticipationRequest(
     createDto: CreateParticipationRequestDto,
   ): Promise<ParticipationRequestResponseDto> {
-    const request = this.participationRequestRepository.create(createDto);
+    // 게시글 정보 가져오기
+    const post = await this.postRepository.findOne({
+      where: { postId: createDto.postId },
+    });
+    if (!post) {
+      throw new NotFoundException('해당 게시글을 찾을 수 없습니다.');
+    }
+
+    // 요청자와 게시글 작성자가 동일한지 확인
+    if (createDto.requesterId === post.userId) {
+      throw new BadRequestException('요청자와 수신자는 동일할 수 없습니다.');
+    }
+
+    // 차단 여부 확인
+    const isBlocked = await this.userBlockRepository.findOne({
+      where: {
+        blockerId: post.userId, // 게시글 작성자가 차단한 사용자
+        blockedId: createDto.requesterId, // 요청자
+      },
+    });
+
+    if (isBlocked) {
+      throw new BadRequestException(
+        '차단된 사용자에게는 참여 요청을 보낼 수 없습니다.',
+      );
+    }
+
+    // 수신자 ID를 게시글 작성자의 ID로 설정
+    const request = this.participationRequestRepository.create({
+      ...createDto,
+      addresseeId: post.userId,
+    });
+
     const savedRequest =
       await this.participationRequestRepository.save(request);
     return this.mapToParticipationRequestResponseDto(savedRequest);
@@ -37,9 +80,23 @@ export class ParticipantService {
       throw new NotFoundException('참여 요청 정보를 찾을 수 없습니다.');
     }
 
+    // 차단 여부 확인
+    const isBlocked = await this.userBlockRepository.findOne({
+      where: {
+        blockerId: request.addresseeId, // 수신자가 차단한 사용자
+        blockedId: request.requesterId, // 요청자
+      },
+    });
+
+    if (isBlocked) {
+      throw new BadRequestException(
+        '차단된 사용자의 참여 요청을 수락할 수 없습니다.',
+      );
+    }
+
     const participant = this.participantRepository.create({
       postId: request.postId,
-      participantId: request.requesterId,
+      userId: request.requesterId,
     });
     await this.participantRepository.save(participant);
 

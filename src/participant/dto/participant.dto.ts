@@ -4,7 +4,7 @@ import { PostParticipant } from '../../entities/post-participant.entity';
 
 export class CreateParticipationRequestDto extends PickType(
   PostParticipationRequest,
-  ['postId', 'requesterId', 'addresseeId'] as const,
+  ['postId', 'requesterId'] as const,
 ) {}
 
 export class ParticipationRequestResponseDto extends PickType(
