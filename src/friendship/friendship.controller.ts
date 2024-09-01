@@ -60,6 +60,24 @@ export class FriendshipController {
     return this.friendshipService.acceptFriendRequest(requestId);
   }
 
+  // 특정 유저의 모든 친구를 조회하는 엔드포인트
+  @Get('user/:userId/friends')
+  @ApiOperation({
+    summary: '사용자의 모든 친구 조회',
+    description: '특정 사용자의 모든 친구를 조회합니다.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '사용자의 친구 목록 조회 성공',
+    type: [ResponseFriendshipDto],
+  })
+  @ApiParam({ name: 'userId', description: '사용자 ID' })
+  getAllFriends(
+    @Param('userId') userId: number,
+  ): Promise<ResponseFriendshipDto[]> {
+    return this.friendshipService.getAllFriends(userId);
+  }
+
   @Delete('request/:requestId/decline')
   @ApiOperation({
     summary: '친구 요청 거절',

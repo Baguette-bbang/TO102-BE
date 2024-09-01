@@ -115,6 +115,26 @@ export class FriendshipService {
     return { friendshipId: friendship.friendshipId };
   }
 
+  // 특정 유저의 모든 친구를 조회
+  async getAllFriends(userId: number): Promise<ResponseFriendshipDto[]> {
+    const friendships = await this.friendshipRepository.find({
+      where: [{ userId1: userId }, { userId2: userId }],
+      relations: ['user1', 'user2'],
+    });
+
+    return friendships.map((friendship) => {
+      // 간단히 로직을 수정하여 문제 발생 여부를 확인
+      const friendId =
+        friendship.userId1 === Number(userId)
+          ? friendship.userId2
+          : friendship.userId1;
+      return {
+        friendshipId: friendship.friendshipId,
+        friendId: friendId,
+      };
+    });
+  }
+
   // 친구 요청 거절 또는 요청 취소
   async declineFriendRequest(requestId: number): Promise<void> {
     const friendRequest = await this.friendRequestRepository.findOne({
